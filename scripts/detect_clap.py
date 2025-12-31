@@ -110,27 +110,21 @@ for infile in video_files:
     for i, (t, peak) in enumerate(grouped_peaks):
         print(f"    Candidate {i+1}: t={t:.3f}s, TPK={peak:.2f} dBFS")
 
-    # Use the loudest peak as the clap
+    # Use the loudest peak as selected by ebur128
     best_time, best_peak = max(grouped_peaks, key=lambda x: x[1])
     print(f"  Selected clap: t={best_time:.6f}s  TPK={best_peak:.2f} dBFS")
 
     # ------------------------------------------------------------
-    # Pass 2: derive linear threshold
-    # ------------------------------------------------------------
-    thr_db = best_peak - margin_db
-    thr = math.pow(10.0, thr_db / 20.0)
-
-    print(f"  Using onset threshold: {thr_db:.2f} dBFS  →  {thr:.6f}")
-
-
-    # ------------------------------------------------------------
-    # Pass 3: Sample-accurate detection using raw audio
+    # Pass 2: Sample-accurate detection using raw audio
+    # Use a SMALL window to avoid picking up nearby noise
     # ------------------------------------------------------------
 
-    # Extract a wider window of raw audio around the detected peak
-    # Need enough context for cross-correlation to work properly
-    window_start = max(0, best_time - 1.0)  # Start 1s before detected peak
-    window_duration = 2.0                    # 2 second window
+    sample_rate = 48000
+
+    # Extract a small window around just the selected clap
+    # Use 0.3s window (0.15s before and after) to avoid nearby candidates
+    window_duration = 0.3
+    window_start = max(0, best_time - 0.15)
 
     tmpfile = f"/tmp/clap_window_{infile.stem}.s16le"
 
@@ -152,54 +146,34 @@ for infile in video_files:
 
     subprocess.run(cmd_extract, stderr=subprocess.PIPE, check=True)
 
-    # Read raw samples and find first threshold crossing
-    sample_rate = 48000
-    channels = 2
-    bytes_per_sample = 2
-
+    # Read raw samples
     with open(tmpfile, "rb") as f:
         data = f.read()
 
-    # Convert to numpy array for easier processing (mix to mono)
+    # Convert to numpy array (mix to mono)
     audio = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
-    # Mix stereo to mono
     audio_mono = (audio[0::2] + audio[1::2]) / 2.0
 
-    # Store this video's data (don't pick clap yet - do it globally)
+    # Find the loudest peak in this small window
+    max_peak_sample = np.argmax(np.abs(audio_mono))
+    max_peak_value = np.abs(audio_mono[max_peak_sample])
+    clap_time = window_start + (max_peak_sample / sample_rate)
+
+    print(f"  Sample-accurate peak: t={clap_time:.6f}s, amplitude={max_peak_value:.4f}")
+
+    # Store this video's data
     video_data.append({
         'file': infile,
         'audio': audio_mono,
         'window_start': window_start,
-        'best_time': best_time,
+        'clap_sample_in_window': max_peak_sample,
+        'clap_time': clap_time,
         'sample_rate': sample_rate
     })
 
     print(f"  Extracted {len(audio_mono)} samples\n")
 
-# Pass 2: Find the loudest peak in each video (simple approach)
 print(f"{'='*60}")
-print(f"Finding loudest peak in each video (high-pass filtered)...")
-print(f"{'='*60}\n")
-
-# Simple approach: find the loudest peak in the extracted window
-# The high-pass filter should have removed low-frequency noise already
-for i, data in enumerate(video_data):
-    audio = data['audio']
-
-    # Find the loudest peak - this is where we want videos to start
-    max_peak_sample = np.argmax(np.abs(audio))
-    max_peak_value = np.abs(audio[max_peak_sample])
-
-    clap_time = data['window_start'] + (max_peak_sample / sample_rate)
-
-    data['clap_sample_in_window'] = max_peak_sample
-    data['clap_time'] = clap_time
-
-    print(f"  {data['file'].name}:")
-    print(f"    Peak at: {clap_time:.6f}s (sample {max_peak_sample} in window)")
-    print(f"    Peak amplitude: {max_peak_value:.4f}")
-
-print(f"\n{'='*60}")
 print(f"Trimming videos to synchronized clap start...")
 print(f"{'='*60}\n")
 
