@@ -1,0 +1,18 @@
+# Motion Capture Pipeline Dependencies
+
+# Core scientific computing
+numpy<2
+
+# Computer vision and image processing
+opencv-python
+mediapipe
+
+# Data storage and manipulation
+h5py
+
+# Visualization
+matplotlib
+Pillow
+
+# Motion capture and pose estimation
+sleap-anipose
