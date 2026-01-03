@@ -1,4 +1,20 @@
-session
-raw
-synced
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Session data (generated during workflow)
+session/
+raw/
+synced/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
 

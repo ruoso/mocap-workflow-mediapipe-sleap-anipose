@@ -14,5 +14,8 @@ h5py
 matplotlib
 Pillow
 
+# PDF generation
+reportlab
+
 # Motion capture and pose estimation
 sleap-anipose

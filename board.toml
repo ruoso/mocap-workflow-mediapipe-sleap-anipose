@@ -1,6 +1,6 @@
-board_x = 8
-board_y = 11
-square_length = 24.0
-marker_length = 18.75
-marker_bits = 4
-dict_size = 1000
+board_x = 7
+board_y = 5
+square_length = 0.052000000000000005
+marker_length = 0.04
+marker_bits = 5
+dict_size = 50

@@ -18,7 +18,7 @@ A complete multi-camera motion capture pipeline for markerless 3D pose estimatio
 
 - Python 3.8+
 - ffmpeg (for video processing)
-- A calibration checkerboard pattern
+- A printer (A3 recommended, or A4/Letter for multi-page printing)
 
 ### Setup
 
@@ -41,21 +41,29 @@ pip install -r requirements.txt
 wget https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task
 ```
 
-5. Create a calibration board configuration file (`board.toml`):
-```toml
-# Checkerboard dimensions
-[board]
-type = "checkerboard"
-square_length = 0.025  # Size of each square in meters
-marker_length = 0
-marker_bits = 0
-dict_size = 0
+5. **Print the calibration board:**
 
-# Number of internal corners (not squares)
-[board.size]
-width = 9   # Number of internal corners horizontally
-height = 6  # Number of internal corners vertically
-```
+   This repository includes pre-generated ChArUco board files ready for printing:
+   - `board_A3_multipage.pdf` - For A3 paper (3 pages, recommended)
+   - `board_A4_multipage.pdf` - For A4 paper (8 pages)
+   - `board_Letter_multipage.pdf` - For US Letter paper (6 pages)
+
+   The board configuration is already set in `board.toml`:
+   - 7×5 ChArUco board
+   - 40mm ArUco markers
+   - 52mm squares
+   - 5×5 bit markers (DICT_5X5_50)
+
+   **Printing instructions:**
+   - Print at **100% scale** (do not scale to fit page)
+   - For multi-page: trim pages at crop marks and align overlaps
+   - Mount on rigid backing (foam board recommended)
+   - Verify marker size after printing (should be exactly 40mm)
+
+   **To regenerate the board (optional):**
+   ```bash
+   python3 scripts/generate_board.py --marker-size 40
+   ```
 
 ## Complete Workflow
 
@@ -140,7 +148,7 @@ session/20251231/
 
 ### 4. Camera Calibration
 
-Calibrate the cameras using the checkerboard pattern:
+Calibrate the cameras using the printed ChArUco board:
 
 ```bash
 ./scripts/calibrate.sh <session_name>
@@ -151,15 +159,17 @@ Calibrate the cameras using the checkerboard pattern:
 ./scripts/calibrate.sh 20251231
 ```
 
-This creates:
+This uses the `board.toml` configuration file (included in the repository) and creates:
 - `calibration.toml` - Camera parameters and extrinsics
 - `calibration_metadata.h5` - Detailed calibration data
 - `reprojection_histogram.png` - Quality visualization
 
 **Tips:**
-- Move the checkerboard to various positions and orientations
+- Move the ChArUco board to various positions and orientations
 - Ensure the board is visible in all cameras simultaneously
+- The ChArUco board allows partial visibility (doesn't need to be fully in frame)
 - 50-100 frames with good board visibility is usually sufficient
+- The 40mm markers provide good detection at typical calibration distances
 
 ### 5. 2D Pose Tracking
 
@@ -308,6 +318,7 @@ TOML file containing:
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
+| `generate_board.py` | Generate ChArUco calibration board | Creates board.png and PDFs |
 | `edit_tracking.py` | Manual tracking correction | Interactive GUI |
 | `visualize_tracking.py` | 2D tracking overlay | Creates *_tracked.mp4 |
 | `visualize_3d.py` | 3D skeleton animation | Creates animated video |
@@ -329,12 +340,13 @@ TOML file containing:
 - Avoid background noise during synchronization clap
 
 ### Calibration
-- Use a rigid, flat checkerboard
-- Print the board on stiff material to prevent warping
-- Measure square size accurately
-- Move board slowly and smoothly
+- Use the provided ChArUco board PDFs (pre-generated in repository)
+- Print at 100% scale and mount on rigid backing (foam board)
+- Verify marker size after printing (should be exactly 40mm)
+- Move board slowly and smoothly during calibration
 - Cover the entire camera view with different board positions
 - Tilt the board at various angles
+- ChArUco allows partial board visibility for easier calibration
 - Aim for reprojection error < 1 pixel
 
 ### Tracking
@@ -346,7 +358,9 @@ TOML file containing:
 
 ### Troubleshooting
 - **Poor synchronization:** Check audio levels, ensure clap is loud enough
-- **Calibration fails:** Add more checkerboard positions, ensure board is flat
+- **Calibration fails:** Add more ChArUco board positions, ensure board is flat and markers are not damaged
+- **Board not detected:** Verify markers are sharp and high-contrast, check lighting
+- **Wrong board dimensions:** Verify printing scale is 100%, measure markers (should be 40mm)
 - **Tracking errors:** Use manual editor, improve lighting, reduce motion blur
 - **Triangulation errors:** Verify calibration quality, check camera overlap
 
@@ -377,6 +391,7 @@ See `requirements.txt` for complete list. Main dependencies:
 - **h5py** - HDF5 file format support
 - **matplotlib** - Visualization and animation
 - **Pillow** - Image processing
+- **reportlab** - PDF generation for calibration boards
 - **sleap-anipose** - Multi-camera calibration and triangulation
 
 ## Project Structure
@@ -384,19 +399,26 @@ See `requirements.txt` for complete list. Main dependencies:
 ```
 .
 ├── README.md
+├── LICENSE
 ├── requirements.txt
-├── board.toml                    # Checkerboard configuration
+├── .gitignore
+├── board.toml                       # ChArUco board configuration
+├── board.png                        # High-res board image (300 DPI)
+├── board_A3_multipage.pdf           # A3 format (3 pages)
+├── board_A4_multipage.pdf           # A4 format (8 pages)
+├── board_Letter_multipage.pdf       # US Letter format (6 pages)
 ├── scripts/
-│   ├── detect_clap.py           # Video synchronization
-│   ├── validate_sync.py         # Sync validation
-│   ├── prepare_session.py       # Session setup
-│   ├── calibrate.sh             # Camera calibration
-│   ├── track_mediapipe.py       # 2D pose tracking
-│   ├── edit_tracking.py         # Manual correction
-│   ├── visualize_tracking.py    # 2D visualization
-│   ├── triangulate.sh           # 3D triangulation
-│   └── visualize_3d.py          # 3D visualization
-└── session/                     # Session data (created by workflow)
+│   ├── generate_board.py            # Board generation
+│   ├── detect_clap.py               # Video synchronization
+│   ├── validate_sync.py             # Sync validation
+│   ├── prepare_session.py           # Session setup
+│   ├── calibrate.sh                 # Camera calibration
+│   ├── track_mediapipe.py           # 2D pose tracking
+│   ├── edit_tracking.py             # Manual correction
+│   ├── visualize_tracking.py        # 2D visualization
+│   ├── triangulate.sh               # 3D triangulation
+│   └── visualize_3d.py              # 3D visualization
+└── session/                         # Session data (created by workflow)
     └── <session_name>/
         ├── calibration/
         ├── take1/
