@@ -109,9 +109,10 @@ def generate_charuco_board(
     }
 
 
-def draw_scale_rulers_and_info(c, paper_w_mm, paper_h_mm, board_info, x_start, y_start, width, height, page_info=None):
+def draw_scale_rulers_and_info(c, paper_w_mm, paper_h_mm, board_info, x_start, y_start, width, height, page_info=None, is_single_page=True):
     """
     Draw scale rulers, dimensions, and page info on a PDF canvas.
+    Places horizontal rulers at the top alongside the title for better space usage.
 
     Args:
         c: ReportLab canvas object
@@ -123,11 +124,12 @@ def draw_scale_rulers_and_info(c, paper_w_mm, paper_h_mm, board_info, x_start, y
         width: Width of board content (in mm)
         height: Height of board content (in mm)
         page_info: Optional string for page info (e.g., "Page 1/4")
+        is_single_page: True for single-page PDFs, False for multi-page
     """
     from reportlab.lib.pagesizes import mm
 
-    # Board specifications at top
-    c.setFont("Helvetica-Bold", 10)
+    # Board specifications at top left
+    c.setFont("Helvetica-Bold", 8)
 
     if board_info:
         marker_mm = board_info.get('marker_length_mm', 0)
@@ -139,50 +141,71 @@ def draw_scale_rulers_and_info(c, paper_w_mm, paper_h_mm, board_info, x_start, y
     else:
         spec_text = page_info or "Calibration Board"
 
-    text_width = c.stringWidth(spec_text, "Helvetica-Bold", 10)
-    c.drawString((paper_w_mm*mm - text_width)/2, (paper_h_mm - 3)*mm, spec_text)
+    c.drawString(3*mm, (paper_h_mm - 3)*mm, spec_text)
 
-    # Draw scale rulers
+    # Draw scale rulers at the top
     c.setFont("Helvetica", 6)
     c.setStrokeColorRGB(0, 0, 0)
     c.setFillColorRGB(0, 0, 0)
 
-    # Horizontal ruler (bottom) - millimeters
-    ruler_y = max(1*mm, y_start*mm - 3*mm)
-    ruler_start_x = max(5*mm, x_start*mm)
-    ruler_end_x = min((paper_w_mm - 5)*mm, (x_start + width)*mm)
+    # Horizontal ruler at top - millimeters
+    ruler_y_mm = (paper_h_mm - 7)*mm
+    ruler_start_x = 3*mm
+    ruler_length = min(150, paper_w_mm - 10)  # Max 150mm ruler or paper width
+    ruler_end_x = ruler_start_x + ruler_length*mm
 
-    c.line(ruler_start_x, ruler_y, ruler_end_x, ruler_y)
-    for i in range(0, int(width) + 1, 10):
+    c.line(ruler_start_x, ruler_y_mm, ruler_end_x, ruler_y_mm)
+    for i in range(0, int(ruler_length) + 1, 10):
         tick_x = ruler_start_x + i*mm
         if tick_x <= ruler_end_x:
             if i % 50 == 0:
-                c.line(tick_x, ruler_y, tick_x, ruler_y + 2*mm)
-                c.drawString(tick_x - 3*mm, ruler_y - 2*mm, str(i))
+                c.line(tick_x, ruler_y_mm, tick_x, ruler_y_mm - 2*mm)
+                c.drawString(tick_x - 3*mm, ruler_y_mm + 1*mm, str(i))
             elif i % 10 == 0:
-                c.line(tick_x, ruler_y, tick_x, ruler_y + 1*mm)
+                c.line(tick_x, ruler_y_mm, tick_x, ruler_y_mm - 1*mm)
 
-    c.drawString(ruler_end_x + 1*mm, ruler_y, "mm")
+    c.drawString(ruler_end_x + 1*mm, ruler_y_mm - 0.5*mm, "mm")
 
-    # Horizontal ruler - inches (if there's space)
-    if y_start > 10:
-        ruler_y_inch = ruler_y + 4*mm
-        c.line(ruler_start_x, ruler_y_inch, ruler_end_x, ruler_y_inch)
+    # Horizontal ruler at top - inches
+    ruler_y_inch = ruler_y_mm - 4*mm
+    ruler_length_inch = min(6, ruler_length / 25.4)  # Corresponding inches
+    ruler_end_x_inch = ruler_start_x + ruler_length_inch * 25.4*mm
 
-        for i in range(0, int(width / 25.4) + 1):
-            tick_x = ruler_start_x + i * 25.4*mm
-            if tick_x <= ruler_end_x:
-                c.line(tick_x, ruler_y_inch, tick_x, ruler_y_inch + 2*mm)
-                c.drawString(tick_x - 2*mm, ruler_y_inch + 2.5*mm, f'{i}"')
+    c.line(ruler_start_x, ruler_y_inch, ruler_end_x_inch, ruler_y_inch)
+    for i in range(0, int(ruler_length_inch) + 1):
+        tick_x = ruler_start_x + i * 25.4*mm
+        if tick_x <= ruler_end_x_inch:
+            c.line(tick_x, ruler_y_inch, tick_x, ruler_y_inch - 2*mm)
+            c.drawString(tick_x - 2*mm, ruler_y_inch + 1*mm, f'{i}"')
 
-        c.drawString(ruler_end_x + 1*mm, ruler_y_inch + 1*mm, "in")
+    c.drawString(ruler_end_x_inch + 1*mm, ruler_y_inch - 0.5*mm, "in")
 
-    # Vertical ruler (left side) - millimeters (if there's space)
-    if x_start > 8:
-        ruler_x = max(2*mm, x_start*mm - 3*mm)
+    # Vertical ruler - millimeters
+    if is_single_page:
+        # For single-page: place at left margin
+        ruler_x = 2*mm
         ruler_start_y = max(12*mm, y_start*mm)
-        ruler_end_y = min((paper_h_mm - 8)*mm, (y_start + height)*mm)
+        ruler_end_y = min((paper_h_mm - 15)*mm, (y_start + height)*mm)
+    else:
+        # For multi-page: place on whichever margin has more space
+        left_space = x_start
+        right_space = paper_w_mm - (x_start + width)
 
+        if left_space >= 8:
+            # Use left margin
+            ruler_x = max(2*mm, x_start*mm - 3*mm)
+            ruler_start_y = max(12*mm, y_start*mm)
+            ruler_end_y = min((paper_h_mm - 15)*mm, (y_start + height)*mm)
+        elif right_space >= 8:
+            # Use right margin
+            ruler_x = (x_start + width + 3)*mm
+            ruler_start_y = max(12*mm, y_start*mm)
+            ruler_end_y = min((paper_h_mm - 15)*mm, (y_start + height)*mm)
+        else:
+            # Not enough space for vertical ruler
+            ruler_x = None
+
+    if ruler_x is not None:
         c.line(ruler_x, ruler_start_y, ruler_x, ruler_end_y)
         for i in range(0, int(height) + 1, 10):
             tick_y = ruler_start_y + i*mm
@@ -341,7 +364,7 @@ def create_pdf_multipage(image_path: str, output_pdf: str, paper_size: tuple, bo
             page_num = tile_y * n_tiles_x + tile_x + 1
             page_info = f"Page {page_num}/{n_tiles_x * n_tiles_y} | Tile ({tile_x+1},{tile_y+1})"
             draw_scale_rulers_and_info(c, paper_w_mm, paper_h_mm, board_info,
-                                      margin_mm, margin_mm, tile_w_mm, tile_h_mm, page_info)
+                                      margin_mm, margin_mm, tile_w_mm, tile_h_mm, page_info, is_single_page=False)
 
             # Draw crop marks at corners
             c.setStrokeColorRGB(0.5, 0.5, 0.5)
