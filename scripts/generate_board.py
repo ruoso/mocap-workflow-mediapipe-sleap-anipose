@@ -265,9 +265,10 @@ def create_pdf_single_page(image_path: str, output_pdf: str, paper_size: tuple, 
     print(f"  Paper: {paper_w_mm}x{paper_h_mm}mm ({orientation}), Scale: {scale*100:.1f}%")
 
 
-def create_pdf_multipage(image_path: str, output_pdf: str, paper_size: tuple, board_info: dict = None, overlap_mm: float = 20):
+def create_pdf_multipage(image_path: str, output_pdf: str, paper_size: tuple, board_info: dict = None):
     """
     Create a multi-page PDF with the board split across pages.
+    Tiles edge-to-edge without overlap for precise assembly.
     Adds scale rulers and dimension information to each page.
 
     Args:
@@ -275,7 +276,6 @@ def create_pdf_multipage(image_path: str, output_pdf: str, paper_size: tuple, bo
         output_pdf: Path to save PDF
         paper_size: (width_mm, height_mm) of paper
         board_info: Optional dict with marker_length_mm, square_length_mm
-        overlap_mm: Overlap between pages for alignment
     """
     from reportlab.lib.pagesizes import mm
     from reportlab.pdfgen import canvas
@@ -294,13 +294,13 @@ def create_pdf_multipage(image_path: str, output_pdf: str, paper_size: tuple, bo
     img_w_mm = (img_w_px / dpi) * 25.4
     img_h_mm = (img_h_px / dpi) * 25.4
 
-    # Calculate tiles needed (1:1 scale)
+    # Calculate tiles needed (1:1 scale, no overlap)
     tile_w_mm = paper_w_mm - 2 * margin_mm
     tile_h_mm = paper_h_mm - 2 * margin_mm
 
-    # Number of tiles needed
-    n_tiles_x = math.ceil((img_w_mm - overlap_mm) / (tile_w_mm - overlap_mm))
-    n_tiles_y = math.ceil((img_h_mm - overlap_mm) / (tile_h_mm - overlap_mm))
+    # Number of tiles needed (edge-to-edge tiling)
+    n_tiles_x = math.ceil(img_w_mm / tile_w_mm)
+    n_tiles_y = math.ceil(img_h_mm / tile_h_mm)
 
     print(f"Creating multi-page PDF: {n_tiles_x}x{n_tiles_y} = {n_tiles_x * n_tiles_y} pages")
 
@@ -309,9 +309,9 @@ def create_pdf_multipage(image_path: str, output_pdf: str, paper_size: tuple, bo
 
     for tile_y in range(n_tiles_y):
         for tile_x in range(n_tiles_x):
-            # Calculate region in mm
-            start_x_mm = tile_x * (tile_w_mm - overlap_mm)
-            start_y_mm = tile_y * (tile_h_mm - overlap_mm)
+            # Calculate region in mm (edge-to-edge, no overlap)
+            start_x_mm = tile_x * tile_w_mm
+            start_y_mm = tile_y * tile_h_mm
             end_x_mm = min(start_x_mm + tile_w_mm, img_w_mm)
             end_y_mm = min(start_y_mm + tile_h_mm, img_h_mm)
 
@@ -473,7 +473,7 @@ def main():
     print("Printing instructions:")
     print("  1. Use single-page PDF for A3 printing (easiest)")
     print("  2. For multi-page: print at 100% scale, do not scale to fit")
-    print("  3. Trim pages at crop marks and align overlapping edges")
+    print("  3. Trim pages at crop marks and align edges precisely")
     print("  4. Tape pages together on rigid backing (foam board recommended)")
     print("  5. Measure actual marker size after printing to verify scale")
     print()

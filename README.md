@@ -44,9 +44,9 @@ wget https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landma
 5. **Print the calibration board:**
 
    This repository includes pre-generated ChArUco board files ready for printing:
-   - `board_A3_multipage.pdf` - For A3 paper (3 pages, recommended)
-   - `board_A4_multipage.pdf` - For A4 paper (8 pages)
-   - `board_Letter_multipage.pdf` - For US Letter paper (6 pages)
+   - `board_A3.pdf` - For A3 paper (single page, recommended)
+   - `board_A4_multipage.pdf` - For A4 paper (2 pages)
+   - `board_Letter_multipage.pdf` - For US Letter paper (2 pages)
 
    The board configuration is already set in `board.toml`:
    - 7×5 ChArUco board
@@ -56,7 +56,7 @@ wget https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landma
 
    **Printing instructions:**
    - Print at **100% scale** (do not scale to fit page)
-   - For multi-page: trim pages at crop marks and align overlaps
+   - For multi-page: trim pages at crop marks and align edges precisely
    - Mount on rigid backing (foam board recommended)
    - Verify marker size after printing (should be exactly 40mm)
 
@@ -404,9 +404,9 @@ See `requirements.txt` for complete list. Main dependencies:
 ├── .gitignore
 ├── board.toml                       # ChArUco board configuration
 ├── board.png                        # High-res board image (300 DPI)
-├── board_A3_multipage.pdf           # A3 format (3 pages)
-├── board_A4_multipage.pdf           # A4 format (8 pages)
-├── board_Letter_multipage.pdf       # US Letter format (6 pages)
+├── board_A3.pdf                     # A3 format (single page)
+├── board_A4_multipage.pdf           # A4 format (2 pages)
+├── board_Letter_multipage.pdf       # US Letter format (2 pages)
 ├── scripts/
 │   ├── generate_board.py            # Board generation
 │   ├── detect_clap.py               # Video synchronization
